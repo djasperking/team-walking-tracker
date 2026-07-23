@@ -1,456 +1,1247 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Team Walking Shift & Earnings Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    body { font-family: 'Inter', sans-serif; }
-    .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
-  </style>
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Walking Shift & Earnings Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <!-- TOP HEADER -->
-  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 sticky top-0 z-30 px-4 py-3">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="bg-emerald-500/20 text-emerald-400 p-2 rounded-lg border border-emerald-500/30">
-          <i class="fa-solid me-1 fa-person-walking text-xl"></i>
-        </div>
-        <div>
-          <h1 class="font-bold text-lg text-white">Team Walking Tracker</h1>
-          <p class="text-xs text-slate-400">July 2026 • 5-Day Workweek • $17/hr (50% Split)</p>
-        </div>
-      </div>
-
-      <!-- GOOGLE SHEET SYNC STATUS -->
-      <div id="sync-status" class="flex items-center gap-2 text-xs bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-700 text-slate-300">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span>Connected to Google Sheet</span>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <button onclick="openAddMemberModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition border border-slate-600">
-          <i class="fa-solid fa-user-plus text-emerald-400"></i> Add Member
-        </button>
-        <button onclick="fetchSheetData()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition shadow-lg shadow-emerald-600/20">
-          <i class="fa-solid fa-rotate text-xs"></i> Refresh Data
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- MAIN CONTAINER -->
-  <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-    <!-- LEFT SIDEBAR: INPUT & METRICS -->
-    <section class="lg:col-span-1 space-y-6">
-      
-      <!-- LOG SHIFT FORM -->
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl">
-        <h2 class="font-bold text-base text-white mb-4 flex items-center gap-2">
-          <i class="fa-solid fa-clock text-emerald-400"></i> Record Shift Entry
-        </h2>
-
-        <form id="shift-form" onsubmit="handleShiftSubmit(event)" class="space-y-4">
-          <div>
-            <label class="block text-xs font-medium text-slate-400 mb-1">Team Member</label>
-            <select id="form-member" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
-              <!-- Dynamic Options -->
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-slate-400 mb-1">Date</label>
-            <input type="date" id="form-date" value="2026-07-01" min="2026-07-01" max="2026-07-31" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500" required>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">Start Time</label>
-              <input type="time" id="form-start" value="09:00" onchange="calculatePreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500" required>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-slate-400 mb-1">End Time</label>
-              <input type="time" id="form-end" value="11:30" onchange="calculatePreview()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500" required>
-            </div>
-          </div>
-
-          <!-- DYNAMIC CALCULATION PREVIEW BOX -->
-          <div class="bg-slate-900/90 border border-slate-700/80 rounded-lg p-3 text-xs space-y-1.5">
-            <div class="flex justify-between text-slate-400">
-              <span>Duration:</span>
-              <span id="prev-hours" class="font-semibold text-slate-200">2.50 hrs</span>
-            </div>
-            <div class="flex justify-between text-slate-400">
-              <span>Gross ($17/hr):</span>
-              <span id="prev-gross" class="font-semibold text-slate-200">$42.50</span>
-            </div>
-            <div class="flex justify-between text-rose-400">
-              <span>Company Cut (-50%):</span>
-              <span id="prev-cut" class="font-semibold">-$21.25</span>
-            </div>
-            <div class="border-t border-slate-800 pt-1 flex justify-between font-bold text-emerald-400 text-sm">
-              <span>Net Take Home:</span>
-              <span id="prev-net">$21.25</span>
-            </div>
-          </div>
-
-          <button type="submit" id="submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
-            <i class="fa-solid fa-cloud-arrow-up"></i> Save to Cloud
-          </button>
-        </form>
-      </div>
-
-      <!-- TEAM EARNINGS SUMMARY -->
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl space-y-4">
-        <h2 class="font-bold text-base text-white flex items-center justify-between">
-          <span>Team Totals</span>
-          <span class="text-xs font-normal text-slate-400">July 2026</span>
-        </h2>
-
-        <div id="team-summary-list" class="space-y-3">
-          <!-- Dynamically Generated Member Totals -->
-        </div>
-      </div>
-    </section>
-
-    <!-- RIGHT SECTION: CALENDAR GRID -->
-    <section class="lg:col-span-3 space-y-6">
-      
-      <!-- CALENDAR HEADER -->
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-xl">
-        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-          <div class="flex items-center gap-3">
-            <h2 class="font-bold text-xl text-white">July 2026</h2>
-            <span class="bg-slate-700 text-slate-300 text-xs px-2.5 py-1 rounded-full border border-slate-600">Workweek Only (Mon - Fri)</span>
-          </div>
-
-          <div id="calendar-legend" class="flex items-center gap-3 text-xs">
-            <!-- Dynamic Color Legend -->
-          </div>
-        </div>
-
-        <!-- DAYS OF WEEK HEADER -->
-        <div class="grid grid-cols-5 gap-2 text-center text-xs font-semibold text-slate-400 mb-2">
-          <div>Monday</div>
-          <div>Tuesday</div>
-          <div>Wednesday</div>
-          <div>Thursday</div>
-          <div>Friday</div>
-        </div>
-
-        <!-- CALENDAR GRID -->
-        <div id="calendar-grid" class="grid grid-cols-5 gap-2">
-          <!-- Dynamically populated days -->
-        </div>
-      </div>
-
-    </section>
-  </main>
-
-  <!-- ADD MEMBER MODAL -->
-  <div id="member-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-    <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-sm w-full p-6 shadow-2xl space-y-4">
-      <h3 class="font-bold text-lg text-white flex items-center gap-2">
-        <i class="fa-solid fa-user-plus text-emerald-400"></i> Add New Team Member
-      </h3>
-      <p class="text-xs text-slate-400">Enter the name of the new walker. They will immediately be added to options and analytics.</p>
-      
-      <input type="text" id="new-member-name" placeholder="e.g. Alex" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
-      
-      <div class="flex justify-end gap-2 pt-2">
-        <button onclick="closeAddMemberModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-xs font-semibold rounded-lg text-slate-200">Cancel</button>
-        <button onclick="addNewMember()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold rounded-lg text-white">Add Member</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwdCHPxFSozv1nzPdxKFKJWYTo7YBq1yDsxdFZVmU1yMiC4FpaYbEy6ssGx7e4qXtMg/exec";
-
-    let teamMembers = [
-      { name: 'Jasper', color: 'bg-emerald-500', text: 'text-emerald-400', border: 'border-emerald-500/30' },
-      { name: 'Ezinne', color: 'bg-sky-500', text: 'text-sky-400', border: 'border-sky-500/30' },
-      { name: 'Chinaah', color: 'bg-amber-500', text: 'text-amber-400', border: 'border-amber-500/30' }
-    ];
-
-    let shifts = [];
-
-    const extraColors = [
-      { color: 'bg-purple-500', text: 'text-purple-400', border: 'border-purple-500/30' },
-      { color: 'bg-pink-500', text: 'text-pink-400', border: 'border-pink-500/30' },
-      { color: 'bg-indigo-500', text: 'text-indigo-400', border: 'border-indigo-500/30' }
-    ];
-
-    window.onload = function() {
-      populateMemberDropdown();
-      renderLegend();
-      calculatePreview();
-      fetchSheetData();
-    };
-
-    function populateMemberDropdown() {
-      const select = document.getElementById('form-member');
-      select.innerHTML = '';
-      teamMembers.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.name;
-        opt.textContent = m.name;
-        select.appendChild(opt);
-      });
-    }
-
-    function renderLegend() {
-      const legend = document.getElementById('calendar-legend');
-      legend.innerHTML = teamMembers.map(m => `
-        <div class="flex items-center gap-1.5">
-          <span class="w-2.5 h-2.5 rounded-full ${m.color}"></span>
-          <span class="text-slate-300 font-medium">${m.name}</span>
-        </div>
-      `).join('');
-    }
-
-    function calculatePreview() {
-      const start = document.getElementById('form-start').value;
-      const end = document.getElementById('form-end').value;
-
-      if (!start || !end) return;
-
-      const [sH, sM] = start.split(':').map(Number);
-      const [eH, eM] = end.split(':').map(Number);
-
-      let duration = (eH + eM/60) - (sH + sM/60);
-      if (duration < 0) duration += 24;
-
-      const gross = duration * 17;
-      const cut = gross * 0.50;
-      const net = gross - cut;
-
-      document.getElementById('prev-hours').innerText = duration.toFixed(2) + ' hrs';
-      document.getElementById('prev-gross').innerText = '$' + gross.toFixed(2);
-      document.getElementById('prev-cut').innerText = '-$' + cut.toFixed(2);
-      document.getElementById('prev-net').innerText = '$' + net.toFixed(2);
-    }
-
-    async function fetchSheetData() {
-      const statusEl = document.getElementById('sync-status');
-      statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span><span>Syncing Google Sheet...</span>`;
-
-      try {
-        const res = await fetch(SCRIPT_URL);
-        const data = await res.json();
-        
-        if (Array.isArray(data)) {
-          shifts = data.map(item => ({
-            date: item.Date || item.date,
-            member: item.Member || item.member,
-            startTime: item.StartTime || item.startTime,
-            endTime: item.EndTime || item.endTime,
-            hours: parseFloat(item.Hours || item.hours || 0),
-            grossPay: parseFloat(item.GrossPay || item.grossPay || 0),
-            netPay: parseFloat(item.NetPay || item.netPay || 0)
-          }));
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
         }
-        statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span><span>Google Sheet Connected</span>`;
-      } catch (err) {
-        console.error("Error loading data: ", err);
-        statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span><span>Offline Mode</span>`;
-      }
+    </script>
+    <style>
+        /* Custom scrollbars and modal backdrop effects */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(148, 163, 184, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.4);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.6);
+        }
+        .modal-blur {
+            backdrop-filter: blur(6px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white transition-colors duration-300">
 
-      renderCalendar();
-      renderSummary();
-    }
+    <!-- Top Header Navigation -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- App Title & Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-500 p-2 rounded-xl text-slate-950 font-bold shadow-lg shadow-brand-500/20">
+                        <i data-lucide="footprints" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-snug tracking-tight text-white flex items-center gap-2">
+                            WalkTrack Pro <span class="bg-brand-500/20 text-brand-400 text-xs px-2 py-0.5 rounded-full border border-brand-500/30">July 2026</span>
+                        </h1>
+                        <p class="text-xs text-slate-400 hidden sm:block">Team Shift Clocking & Payroll System</p>
+                    </div>
+                </div>
 
-    async function handleShiftSubmit(e) {
-      e.preventDefault();
+                <!-- Navigation Tabs -->
+                <nav class="flex space-x-1 sm:space-x-2 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+                    <button onclick="switchTab('calendar')" id="tab-btn-calendar" class="tab-btn flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 bg-slate-700 text-white shadow-sm">
+                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                        <span class="hidden md:inline">Calendar Hub</span>
+                    </button>
+                    <button onclick="switchTab('spreadsheet')" id="tab-btn-spreadsheet" class="tab-btn flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200">
+                        <i data-lucide="table" class="w-4 h-4"></i>
+                        <span class="hidden md:inline">Spreadsheet Grid</span>
+                    </button>
+                    <button onclick="switchTab('analytics')" id="tab-btn-analytics" class="tab-btn flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                        <span class="hidden md:inline">Payroll & Stats</span>
+                    </button>
+                </nav>
 
-      const member = document.getElementById('form-member').value;
-      const date = document.getElementById('form-date').value;
-      const startTime = document.getElementById('form-start').value;
-      const endTime = document.getElementById('form-end').value;
+                <!-- Actions: Theme Toggle, Add Member, Log Shift -->
+                <div class="flex items-center space-x-2">
+                    <!-- Day / Night Theme Toggle Button -->
+                    <button onclick="toggleDarkMode()" id="theme-toggle-btn" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 transition active:scale-95" title="Toggle Light / Dark Mode">
+                        <i data-lucide="sun" id="theme-icon-sun" class="w-4 h-4"></i>
+                        <i data-lucide="moon" id="theme-icon-moon" class="w-4 h-4 hidden"></i>
+                    </button>
 
-      const [sH, sM] = startTime.split(':').map(Number);
-      const [eH, eM] = endTime.split(':').map(Number);
-      let hours = (eH + eM/60) - (sH + sM/60);
-      if (hours < 0) hours += 24;
+                    <button onclick="openAddMemberModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-medium text-xs sm:text-sm px-3 py-2 rounded-xl border border-slate-700 transition flex items-center space-x-1.5 shadow-sm active:scale-95">
+                        <i data-lucide="user-plus" class="w-4 h-4 text-brand-400"></i>
+                        <span class="hidden sm:inline">Add Member</span>
+                    </button>
+                    <button onclick="openShiftModal()" class="bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs sm:text-sm px-3.5 py-2 rounded-xl transition flex items-center space-x-1.5 shadow-sm active:scale-95">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>Log Shift</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
 
-      const grossPay = hours * 17;
-      const netPay = grossPay * 0.50;
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-      const newShift = { date, member, startTime, endTime, hours, grossPay, netPay };
+        <!-- Key Metrics Banner -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Team Hours</p>
+                    <p id="stat-total-hours" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">0.0 hrs</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Month of July 2026</p>
+                </div>
+                <div class="bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 p-3 rounded-xl">
+                    <i data-lucide="clock" class="w-6 h-6"></i>
+                </div>
+            </div>
 
-      // Local update
-      shifts.push(newShift);
-      renderCalendar();
-      renderSummary();
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Gross Revenue</p>
+                    <p id="stat-gross-pay" class="text-2xl font-bold text-slate-900 dark:text-white mt-1 font-mono">$0.00</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">At $17.00 / hour rate</p>
+                </div>
+                <div class="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 p-3 rounded-xl">
+                    <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                </div>
+            </div>
 
-      // UI Feedback
-      const btn = document.getElementById('submit-btn');
-      btn.disabled = true;
-      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Saving...`;
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Team Net Payout</p>
+                    <p id="stat-net-pay" class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 font-mono">$0.00</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">50% Distributed Pay</p>
+                </div>
+                <div class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 p-3 rounded-xl">
+                    <i data-lucide="wallet" class="w-6 h-6"></i>
+                </div>
+            </div>
 
-      try {
-        await fetch(SCRIPT_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newShift)
-        });
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between transition-colors">
+                <div>
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Company Split</p>
+                    <p id="stat-deduction" class="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1 font-mono">$0.00</p>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">50% Retention Pool</p>
+                </div>
+                <div class="bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 p-3 rounded-xl">
+                    <i data-lucide="pie-chart" class="w-6 h-6"></i>
+                </div>
+            </div>
+        </section>
 
-        btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved!`;
-        setTimeout(() => {
-          btn.disabled = false;
-          btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Save to Cloud`;
-        }, 1500);
-      } catch (err) {
-        alert("Saved locally! (Could not sync to cloud right now)");
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Save to Cloud`;
-      }
-    }
+        <!-- TAB 1: CALENDAR HUB -->
+        <div id="tab-calendar" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Main Calendar View (Left/Center 8 cols) -->
+                <div class="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 space-y-4 transition-colors">
+                    <!-- Calendar Header Controls -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                        <div class="flex items-center space-x-3">
+                            <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <span id="current-month-display">July 2026</span>
+                            </h2>
+                            <span class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
+                                Shift Calendar
+                            </span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="changeMonth(-1)" class="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition" title="Previous Month">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="resetToJuly2026()" class="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 transition">
+                                Current Month
+                            </button>
+                            <button onclick="changeMonth(1)" class="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition" title="Next Month">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
 
-    function renderCalendar() {
-      const grid = document.getElementById('calendar-grid');
-      grid.innerHTML = '';
+                    <!-- Days of Week Header -->
+                    <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider py-1">
+                        <div class="text-slate-400 dark:text-slate-600">Sun</div>
+                        <div class="text-slate-700 dark:text-slate-300 font-bold">Mon</div>
+                        <div class="text-slate-700 dark:text-slate-300 font-bold">Tue</div>
+                        <div class="text-slate-700 dark:text-slate-300 font-bold">Wed</div>
+                        <div class="text-slate-700 dark:text-slate-300 font-bold">Thu</div>
+                        <div class="text-slate-700 dark:text-slate-300 font-bold">Fri</div>
+                        <div class="text-slate-400 dark:text-slate-600">Sat</div>
+                    </div>
 
-      // July 2026 Weekdays: Mon-Fri only
-      // July 1, 2026 is Wednesday
-      const July2026Days = [
-        { date: '2026-07-01', dayNum: 1, dayName: 'Wed' },
-        { date: '2026-07-02', dayNum: 2, dayName: 'Thu' },
-        { date: '2026-07-03', dayNum: 3, dayName: 'Fri' },
+                    <!-- Calendar Grid -->
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-1.5 min-h-[480px]">
+                        <!-- Dynamic Calendar Days injected via JS -->
+                    </div>
 
-        { date: '2026-07-06', dayNum: 6, dayName: 'Mon' },
-        { date: '2026-07-07', dayNum: 7, dayName: 'Tue' },
-        { date: '2026-07-08', dayNum: 8, dayName: 'Wed' },
-        { date: '2026-07-09', dayNum: 9, dayName: 'Thu' },
-        { date: '2026-07-10', dayNum: 10, dayName: 'Fri' },
+                    <!-- Calendar Legend -->
+                    <div class="flex flex-wrap items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 gap-2">
+                        <div id="calendar-legend-container" class="flex flex-wrap items-center gap-3">
+                            <!-- Injected dynamically via JS -->
+                        </div>
+                        <div class="text-slate-400 dark:text-slate-500 italic">
+                            Click any date to view, add, or delete shift entries
+                        </div>
+                    </div>
+                </div>
 
-        { date: '2026-07-13', dayNum: 13, dayName: 'Mon' },
-        { date: '2026-07-14', dayNum: 14, dayName: 'Tue' },
-        { date: '2026-07-15', dayNum: 15, dayName: 'Wed' },
-        { date: '2026-07-16', dayNum: 16, dayName: 'Thu' },
-        { date: '2026-07-17', dayNum: 17, dayName: 'Fri' },
+                <!-- Sidebar: Member Breakdown & Clock-In Widget (Right 4 cols) -->
+                <div class="lg:col-span-4 space-y-6">
+                    
+                    <!-- Quick Clock-In / Shift Entry Form Widget -->
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 space-y-4 transition-colors">
+                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <i data-lucide="clock" class="w-4 h-4 text-brand-600 dark:text-brand-400"></i>
+                                Quick Shift Entry
+                            </h3>
+                            <span class="text-xs text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md font-medium border border-brand-200 dark:border-brand-800">Log Hours</span>
+                        </div>
 
-        { date: '2026-07-20', dayNum: 20, dayName: 'Mon' },
-        { date: '2026-07-21', dayNum: 21, dayName: 'Tue' },
-        { date: '2026-07-22', dayNum: 22, dayName: 'Wed' },
-        { date: '2026-07-23', dayNum: 23, dayName: 'Thu' },
-        { date: '2026-07-24', dayNum: 24, dayName: 'Fri' },
+                        <form id="quick-shift-form" onsubmit="handleShiftSubmit(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Team Member</label>
+                                <select id="form-member" required class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+                                    <!-- Injected dynamically via JS -->
+                                </select>
+                            </div>
 
-        { date: '2026-07-27', dayNum: 27, dayName: 'Mon' },
-        { date: '2026-07-28', dayNum: 28, dayName: 'Tue' },
-        { date: '2026-07-29', dayNum: 29, dayName: 'Wed' },
-        { date: '2026-07-30', dayNum: 30, dayName: 'Thu' },
-        { date: '2026-07-31', dayNum: 31, dayName: 'Fri' }
-      ];
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Shift Date</label>
+                                    <input type="date" id="form-date" required class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Hourly Rate ($)</label>
+                                    <input type="number" id="form-rate" value="17.00" step="0.5" min="1" required oninput="calculateFormPreview()" onchange="calculateFormPreview()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono transition">
+                                </div>
+                            </div>
 
-      // Add empty spaces for Mon, Tue of Week 1
-      grid.appendChild(createEmptySlot());
-      grid.appendChild(createEmptySlot());
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Start Time</label>
+                                    <input type="time" id="form-start-time" value="09:00" required oninput="calculateFormPreview()" onchange="calculateFormPreview()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono transition">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">End Time</label>
+                                    <input type="time" id="form-end-time" value="11:00" required oninput="calculateFormPreview()" onchange="calculateFormPreview()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono transition">
+                                </div>
+                            </div>
 
-      July2026Days.forEach(d => {
-        const dayShifts = shifts.filter(s => s.date === d.date);
-        
-        const cell = document.createElement('div');
-        cell.className = "bg-slate-900 border border-slate-700/70 rounded-lg p-2.5 min-h-[110px] flex flex-col justify-between hover:border-slate-500 transition cursor-pointer";
-        cell.onclick = () => {
-          document.getElementById('form-date').value = d.date;
+                            <!-- Realtime Shift Earnings Preview Box -->
+                            <div class="bg-slate-900 dark:bg-slate-950 text-white rounded-xl p-3 space-y-1.5 font-mono text-xs border border-slate-800">
+                                <div class="flex justify-between text-slate-400">
+                                    <span>Calculated Duration:</span>
+                                    <span id="preview-hours" class="text-white font-bold">2.00 hrs</span>
+                                </div>
+                                <div class="flex justify-between text-slate-400">
+                                    <span>Gross Earned (100%):</span>
+                                    <span id="preview-gross" class="text-emerald-400 font-bold">$34.00</span>
+                                </div>
+                                <div class="flex justify-between text-amber-400">
+                                    <span>Company Cut (-50%):</span>
+                                    <span id="preview-cut" class="font-bold">-$17.00</span>
+                                </div>
+                                <div class="flex justify-between border-t border-slate-800 pt-1.5">
+                                    <span class="text-slate-300">Net Take Home (50%):</span>
+                                    <span id="preview-net" class="text-brand-400 font-bold text-sm">$17.00</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Notes / Route (Optional)</label>
+                                <input type="text" id="form-notes" placeholder="e.g. Morning walking route" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+                            </div>
+
+                            <button type="submit" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm py-2.5 rounded-xl transition shadow-md shadow-brand-600/20 active:scale-98 flex items-center justify-center space-x-2">
+                                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                                <span>Record Shift Log</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Member Breakdown Cards Sidebar -->
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 space-y-4 transition-colors">
+                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <i data-lucide="users" class="w-4 h-4 text-brand-600 dark:text-brand-400"></i>
+                                Individual Member Totals
+                            </h3>
+                            <button onclick="openAddMemberModal()" class="text-xs text-brand-600 dark:text-brand-400 hover:underline font-semibold flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Add</span>
+                            </button>
+                        </div>
+
+                        <div id="member-sidebar-cards" class="space-y-3">
+                            <!-- Injected dynamically via JS -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: SPREADSHEET GRID -->
+        <div id="tab-spreadsheet" class="tab-content hidden space-y-4">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 space-y-4 transition-colors">
+                
+                <!-- Table Controls Header -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i data-lucide="table" class="w-5 h-5 text-brand-600 dark:text-brand-400"></i>
+                            Shift Log Master Spreadsheet
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Filter, search, delete, or export detailed walking records</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Search Input -->
+                        <div class="relative">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                            <input type="text" id="table-search" placeholder="Search logs..." oninput="renderSpreadsheetTable()" class="pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 transition w-44">
+                        </div>
+
+                        <!-- Filter Member -->
+                        <select id="table-filter-member" onchange="renderSpreadsheetTable()" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <!-- Injected dynamically via JS -->
+                        </select>
+
+                        <!-- Export Button -->
+                        <button onclick="exportCSV()" class="px-3 py-1.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                            <span>Export CSV</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Spreadsheet Data Table -->
+                <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-900 text-slate-200 font-semibold uppercase tracking-wider font-mono">
+                            <tr>
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Member</th>
+                                <th class="p-3">Shift Window</th>
+                                <th class="p-3 text-right">Hours</th>
+                                <th class="p-3 text-right">Rate</th>
+                                <th class="p-3 text-right">Gross ($)</th>
+                                <th class="p-3 text-right">Company 50% ($)</th>
+                                <th class="p-3 text-right text-brand-400">Net Pay ($)</th>
+                                <th class="p-3">Notes</th>
+                                <th class="p-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="spreadsheet-tbody" class="divide-y divide-slate-200 dark:divide-slate-800 font-mono">
+                            <!-- Dynamic Spreadsheet Rows -->
+                        </tbody>
+                        <tfoot id="spreadsheet-tfoot" class="bg-slate-100 dark:bg-slate-800/60 font-bold font-mono border-t-2 border-slate-300 dark:border-slate-700">
+                            <!-- Summary Row -->
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: PAYROLL & STATS -->
+        <div id="tab-analytics" class="tab-content hidden space-y-6">
+            
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 space-y-4 transition-colors">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i data-lucide="award" class="w-5 h-5 text-brand-600 dark:text-brand-400"></i>
+                            Member Earnings & Shift Breakdown
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Calculated at $17.00/hr base rate with 50% net split retention formula</p>
+                    </div>
+                </div>
+
+                <!-- Comprehensive Member Payroll Cards -->
+                <div id="payroll-detailed-cards" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Dynamic Member Cards Injected Here -->
+                </div>
+            </div>
+
+            <!-- Weekly Shift Breakdown Matrix -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 space-y-4 transition-colors">
+                <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                    <i data-lucide="calendar-days" class="w-4 h-4 text-brand-600 dark:text-brand-400"></i>
+                    July 2026 Weekly Work Analysis
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left">
+                        <thead id="weekly-matrix-thead" class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold uppercase">
+                            <!-- Dynamic Table Header Injected via JS -->
+                        </thead>
+                        <tbody id="weekly-matrix-tbody" class="divide-y divide-slate-200 dark:divide-slate-800 font-mono">
+                            <!-- Dynamic Weekly Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ADD TEAM MEMBER MODAL -->
+    <div id="add-member-modal" class="fixed inset-0 bg-slate-900/60 modal-blur z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full overflow-hidden transform transition-all">
+            <div class="bg-slate-900 text-white p-4 flex items-center justify-between">
+                <h3 class="font-bold text-base flex items-center gap-2">
+                    <i data-lucide="user-plus" class="w-4 h-4 text-brand-400"></i>
+                    <span>Add New Team Member</span>
+                </h3>
+                <button onclick="closeAddMemberModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleAddMemberSubmit(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Member Full Name or First Name</label>
+                    <input type="text" id="new-member-name" required placeholder="e.g. Alex, Sarah, Michael..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+                </div>
+
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2">
+                    <i data-lucide="info" class="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0 mt-0.5"></i>
+                    <span>New members automatically receive custom color badges across calendar, dropdowns, and payroll stats.</span>
+                </div>
+
+                <div class="flex items-center justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeAddMemberModal()" class="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold rounded-xl transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs px-4 py-2 rounded-xl transition shadow-sm flex items-center space-x-1.5">
+                        <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                        <span>Add Member</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- DATE INSPECTION MODAL (Clicking Calendar Date - includes individual entry deletion!) -->
+    <div id="date-modal" class="fixed inset-0 bg-slate-900/60 modal-blur z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden transform transition-all">
+            
+            <div class="bg-slate-900 text-white p-4 flex items-center justify-between">
+                <div>
+                    <h3 id="date-modal-title" class="font-bold text-base flex items-center gap-2">
+                        <i data-lucide="calendar" class="w-4 h-4 text-brand-400"></i>
+                        <span>July 15, 2026 Logs</span>
+                    </h3>
+                    <p id="date-modal-subtitle" class="text-xs text-slate-400">Daily shift clockings</p>
+                </div>
+                <button onclick="closeDateModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div id="date-modal-content" class="space-y-3">
+                    <!-- Injected dynamically with delete buttons -->
+                </div>
+            </div>
+
+            <div class="bg-slate-50 dark:bg-slate-800/80 p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <button onclick="openModalForSelectedDate()" class="bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs px-3.5 py-2 rounded-xl transition flex items-center space-x-1.5">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Add Shift to this Date</span>
+                </button>
+                <button onclick="closeDateModal()" class="px-4 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold rounded-xl transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRM DELETE MODAL -->
+    <div id="confirm-delete-modal" class="fixed inset-0 bg-slate-900/60 modal-blur z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-sm w-full p-5 space-y-4 text-center">
+            <div class="w-12 h-12 bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 rounded-2xl mx-auto flex items-center justify-center">
+                <i data-lucide="trash-2" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-900 dark:text-white text-base">Delete Shift Entry?</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">This entry will be permanently removed from all calendar grids and spreadsheet totals.</p>
+            </div>
+            <div class="flex items-center justify-center space-x-2 pt-2">
+                <button onclick="closeConfirmDeleteModal()" class="w-1/2 py-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                    Cancel
+                </button>
+                <button id="confirm-delete-btn" onclick="executePendingDelete()" class="w-1/2 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-xl transition shadow-md">
+                    Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Color Palette Pool for Dynamic Team Members
+        const COLOR_PALETTE = [
+            { color: 'blue', border: 'border-blue-500', bg: 'bg-blue-500', lightBg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-300' },
+            { color: 'emerald', border: 'border-emerald-500', bg: 'bg-emerald-500', lightBg: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-300' },
+            { color: 'purple', border: 'border-purple-500', bg: 'bg-purple-500', lightBg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-700 dark:text-purple-300' },
+            { color: 'amber', border: 'border-amber-500', bg: 'bg-amber-500', lightBg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300' },
+            { color: 'rose', border: 'border-rose-500', bg: 'bg-rose-500', lightBg: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-700 dark:text-rose-300' },
+            { color: 'indigo', border: 'border-indigo-500', bg: 'bg-indigo-500', lightBg: 'bg-indigo-50 dark:bg-indigo-950/40', text: 'text-indigo-700 dark:text-indigo-300' },
+            { color: 'cyan', border: 'border-cyan-500', bg: 'bg-cyan-500', lightBg: 'bg-cyan-50 dark:bg-cyan-950/40', text: 'text-cyan-700 dark:text-cyan-300' },
+            { color: 'teal', border: 'border-teal-500', bg: 'bg-teal-500', lightBg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-700 dark:text-teal-300' },
+            { color: 'orange', border: 'border-orange-500', bg: 'bg-orange-500', lightBg: 'bg-orange-50 dark:bg-orange-950/40', text: 'text-orange-700 dark:text-orange-300' }
+        ];
+
+        // Core Team Members
+        let TEAM_MEMBERS = {
+            'Jasper': COLOR_PALETTE[0],
+            'Ezinne': COLOR_PALETTE[1],
+            'Chinaah': COLOR_PALETTE[2]
         };
 
-        let badges = dayShifts.map(s => {
-          const mInfo = teamMembers.find(m => m.name === s.member) || teamMembers[0];
-          return `
-            <div class="text-[10px] ${mInfo.color}/20 ${mInfo.text} px-1.5 py-0.5 rounded border ${mInfo.border} flex justify-between items-center">
-              <span>${s.member}</span>
-              <span class="font-bold">${s.hours.toFixed(1)}h</span>
-            </div>
-          `;
-        }).join('');
+        // Application State
+        let currentYear = 2026;
+        let currentMonth = 6; // 0-indexed: 6 = July
+        let activeTab = 'calendar';
+        let selectedInspectionDate = null;
+        let pendingDeleteId = null;
 
-        cell.innerHTML = `
-          <div>
-            <div class="flex justify-between items-center mb-1">
-              <span class="font-bold text-sm text-slate-200">${d.dayNum}</span>
-              <span class="text-[10px] text-slate-500">${d.dayName}</span>
-            </div>
-            <div class="space-y-1">
-              ${badges || '<span class="text-[10px] text-slate-600 block italic">No shifts</span>'}
-            </div>
-          </div>
-        `;
-        grid.appendChild(cell);
-      });
-    }
+        // Shift Records Store
+        let shiftLogs = [];
 
-    function createEmptySlot() {
-      const div = document.createElement('div');
-      div.className = "bg-slate-900/30 border border-slate-800/40 rounded-lg min-h-[110px]";
-      return div;
-    }
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const sunIcon = document.getElementById('theme-icon-sun');
+            const moonIcon = document.getElementById('theme-icon-moon');
 
-    function renderSummary() {
-      const list = document.getElementById('team-summary-list');
-      list.innerHTML = '';
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+                showNotification("Switched to Light Mode ☀️");
+            } else {
+                html.classList.remove('light');
+                html.classList.add('dark');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+                showNotification("Switched to Dark Mode 🌙");
+            }
+        }
 
-      teamMembers.forEach(m => {
-        const mShifts = shifts.filter(s => s.member === m.name);
-        const totalHours = mShifts.reduce((acc, s) => acc + s.hours, 0);
-        const totalNet = mShifts.reduce((acc, s) => acc + s.netPay, 0);
+        function populateMemberDropdowns() {
+            const formSelect = document.getElementById('form-member');
+            const filterSelect = document.getElementById('table-filter-member');
+            
+            if (formSelect) {
+                const currentVal = formSelect.value;
+                formSelect.innerHTML = Object.keys(TEAM_MEMBERS).map(name => 
+                    `<option value="${name}">${name}</option>`
+                ).join('');
+                if (TEAM_MEMBERS[currentVal]) formSelect.value = currentVal;
+            }
 
-        const card = document.createElement('div');
-        card.className = `bg-slate-900 border ${m.border} rounded-lg p-3 flex justify-between items-center`;
-        card.innerHTML = `
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full ${m.color}"></span>
-              <span class="font-semibold text-sm text-white">${m.name}</span>
-            </div>
-            <p class="text-xs text-slate-400 mt-1">${totalHours.toFixed(2)} Total Hours</p>
-          </div>
-          <div class="text-right">
-            <span class="text-sm font-bold ${m.text}">$${totalNet.toFixed(2)}</span>
-            <span class="block text-[10px] text-slate-500">Net Earnings</span>
-          </div>
-        `;
-        list.appendChild(card);
-      });
-    }
+            if (filterSelect) {
+                const currentVal = filterSelect.value || 'ALL';
+                filterSelect.innerHTML = `<option value="ALL">All Team Members</option>` + 
+                    Object.keys(TEAM_MEMBERS).map(name => `<option value="${name}">${name}</option>`).join('');
+                filterSelect.value = currentVal;
+            }
+        }
 
-    function openAddMemberModal() {
-      document.getElementById('member-modal').classList.remove('hidden');
-      document.getElementById('member-modal').classList.add('flex');
-    }
+        function renderCalendarLegend() {
+            const container = document.getElementById('calendar-legend-container');
+            if (!container) return;
+            
+            container.innerHTML = Object.keys(TEAM_MEMBERS).map(name => {
+                const meta = TEAM_MEMBERS[name];
+                return `
+                    <div class="flex items-center space-x-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full ${meta.bg}"></span>
+                        <span class="font-medium text-slate-700 dark:text-slate-300">${name}</span>
+                    </div>
+                `;
+            }).join('');
+        }
 
-    function closeAddMemberModal() {
-      document.getElementById('member-modal').classList.add('hidden');
-      document.getElementById('member-modal').classList.remove('flex');
-    }
+        function openAddMemberModal() {
+            document.getElementById('add-member-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('new-member-name').focus(), 100);
+        }
 
-    function addNewMember() {
-      const nameInput = document.getElementById('new-member-name');
-      const name = nameInput.value.trim();
-      if (!name) return;
+        function closeAddMemberModal() {
+            document.getElementById('add-member-modal').classList.add('hidden');
+            document.getElementById('new-member-name').value = '';
+        }
 
-      const colorScheme = extraColors[teamMembers.length % extraColors.length] || extraColors[0];
-      teamMembers.push({
-        name: name,
-        color: colorScheme.color,
-        text: colorScheme.text,
-        border: colorScheme.border
-      });
+        function showNotification(message) {
+            let toast = document.getElementById('toast-notification');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast-notification';
+                toast.className = 'fixed bottom-5 right-5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl z-50 transition-all duration-300 flex items-center gap-2 transform translate-y-10 opacity-0 pointer-events-none border border-slate-700 dark:border-slate-300';
+                document.body.appendChild(toast);
+            }
+            toast.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-brand-400 dark:text-brand-600"></i><span>${message}</span>`;
+            if (window.lucide) lucide.createIcons();
+            
+            toast.classList.remove('translate-y-10', 'opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
 
-      nameInput.value = '';
-      closeAddMemberModal();
-      populateMemberDropdown();
-      renderLegend();
-      renderSummary();
-    }
-  </script>
+        function handleAddMemberSubmit(event) {
+            event.preventDefault();
+            const input = document.getElementById('new-member-name');
+            const name = input.value.trim();
+
+            if (!name) return;
+            if (TEAM_MEMBERS[name]) {
+                showNotification(`Member "${name}" already exists!`);
+                return;
+            }
+
+            const memberCount = Object.keys(TEAM_MEMBERS).length;
+            const colorScheme = COLOR_PALETTE[memberCount % COLOR_PALETTE.length];
+
+            TEAM_MEMBERS[name] = colorScheme;
+
+            closeAddMemberModal();
+            populateMemberDropdowns();
+            renderCalendarLegend();
+            updateSummaryMetrics();
+            renderCalendar();
+            renderSpreadsheetTable();
+
+            showNotification(`Team member "${name}" added successfully!`);
+        }
+
+        function openShiftModal() {
+            switchTab('calendar');
+            document.getElementById('form-member').focus();
+        }
+
+        function calculateHoursBetween(startStr, endStr) {
+            if (!startStr || !endStr) return 0;
+            const [startH, startM] = startStr.split(':').map(Number);
+            const [endH, endM] = endStr.split(':').map(Number);
+            let startMins = startH * 60 + startM;
+            let endMins = endH * 60 + endM;
+            if (endMins < startMins) endMins += 24 * 60;
+            const diffMinutes = endMins - startMins;
+            return Math.max(0, parseFloat((diffMinutes / 60).toFixed(2)));
+        }
+
+        function calculateFormPreview() {
+            const startStr = document.getElementById('form-start-time').value;
+            const endStr = document.getElementById('form-end-time').value;
+            const rate = parseFloat(document.getElementById('form-rate').value) || 17.00;
+
+            const hours = calculateHoursBetween(startStr, endStr);
+            const gross = hours * rate;
+            const cut = gross * 0.50;
+            const net = gross * 0.50;
+
+            document.getElementById('preview-hours').textContent = `${hours.toFixed(2)} hrs`;
+            document.getElementById('preview-gross').textContent = `$${gross.toFixed(2)}`;
+            if (document.getElementById('preview-cut')) {
+                document.getElementById('preview-cut').textContent = `-$${cut.toFixed(2)}`;
+            }
+            document.getElementById('preview-net').textContent = `$${net.toFixed(2)}`;
+        }
+
+        function updateSummaryMetrics() {
+            let totalHours = 0;
+            let totalGross = 0;
+
+            shiftLogs.forEach(log => {
+                const h = parseFloat(log.hours) || 0;
+                const r = parseFloat(log.rate) || 17.00;
+                totalHours += h;
+                totalGross += (h * r);
+            });
+
+            const netPay = totalGross * 0.50;
+            const deduction = totalGross * 0.50;
+
+            document.getElementById('stat-total-hours').textContent = `${totalHours.toFixed(1)} hrs`;
+            document.getElementById('stat-gross-pay').textContent = `$${totalGross.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('stat-net-pay').textContent = `$${netPay.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('stat-deduction').textContent = `$${deduction.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            renderSidebarMemberCards();
+            renderPayrollDetailedCards();
+            renderWeeklyMatrix();
+        }
+
+        function renderSidebarMemberCards() {
+            const sidebarContainer = document.getElementById('member-sidebar-cards');
+            sidebarContainer.innerHTML = '';
+
+            Object.keys(TEAM_MEMBERS).forEach(memberName => {
+                const memberMeta = TEAM_MEMBERS[memberName];
+                const memberLogs = shiftLogs.filter(l => l.member === memberName);
+                
+                let mHours = 0;
+                let mGross = 0;
+                memberLogs.forEach(l => {
+                    const h = parseFloat(l.hours) || 0;
+                    const r = parseFloat(l.rate) || 17.00;
+                    mHours += h;
+                    mGross += (h * r);
+                });
+
+                const mNet = mGross * 0.50;
+
+                const cardHtml = `
+                    <div class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 ${memberMeta.lightBg} space-y-2 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-3 h-3 rounded-full ${memberMeta.bg}"></span>
+                                <span class="font-bold text-sm text-slate-900 dark:text-white">${memberName}</span>
+                            </div>
+                            <span class="text-xs font-mono font-bold bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
+                                ${mHours.toFixed(1)} hrs
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs font-mono pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                            <div>
+                                <span class="text-slate-500 dark:text-slate-400 block text-[10px] uppercase">Gross Earned</span>
+                                <span class="font-semibold text-slate-800 dark:text-slate-200">$${mGross.toFixed(2)}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-slate-500 dark:text-slate-400 block text-[10px] uppercase">Net Pay (50%)</span>
+                                <span class="font-bold text-emerald-700 dark:text-emerald-400">$${mNet.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                sidebarContainer.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            const dateObj = new Date(currentYear, currentMonth, 1);
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            
+            document.getElementById('current-month-display').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+
+            const firstDayIndex = dateObj.getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = "bg-slate-50/50 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800/40 p-1.5 min-h-[85px] opacity-40";
+                grid.appendChild(emptyCell);
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateString = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayLogs = shiftLogs.filter(l => l.date === dateString);
+                
+                const cellObj = new Date(currentYear, currentMonth, day);
+                const isWeekend = (cellObj.getDay() === 0 || cellObj.getDay() === 6);
+
+                let dayTotalHours = 0;
+                dayLogs.forEach(l => dayTotalHours += parseFloat(l.hours) || 0);
+
+                const dayCell = document.createElement('div');
+                dayCell.className = `rounded-xl border p-2 min-h-[90px] flex flex-col justify-between transition cursor-pointer hover:shadow-md hover:border-brand-500 dark:hover:border-brand-400 group ${
+                    isWeekend ? 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                }`;
+
+                dayCell.onclick = () => openDateModal(dateString);
+
+                let cellHeaderHtml = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold ${isWeekend ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'} group-hover:text-brand-600 dark:group-hover:text-brand-400">
+                            ${day}
+                        </span>
+                        ${dayTotalHours > 0 ? `<span class="text-[10px] font-mono font-bold bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-1.5 py-0.5 rounded-md">${dayTotalHours.toFixed(1)}h</span>` : ''}
+                    </div>
+                `;
+
+                let cellBadgesHtml = `<div class="space-y-1 my-1">`;
+                dayLogs.forEach(log => {
+                    const mMeta = TEAM_MEMBERS[log.member] || COLOR_PALETTE[0];
+                    cellBadgesHtml += `
+                        <div class="text-[10px] ${mMeta.lightBg} ${mMeta.text} px-1.5 py-0.5 rounded-md font-medium truncate border ${mMeta.border} flex justify-between items-center">
+                            <span class="truncate">${log.member}</span>
+                            <span class="font-mono text-[9px] font-bold ml-1">${log.hours}h</span>
+                        </div>
+                    `;
+                });
+                cellBadgesHtml += `</div>`;
+
+                dayCell.innerHTML = cellHeaderHtml + cellBadgesHtml;
+                grid.appendChild(dayCell);
+            }
+
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function renderSpreadsheetTable() {
+            const tbody = document.getElementById('spreadsheet-tbody');
+            const tfoot = document.getElementById('spreadsheet-tfoot');
+            const searchTerm = (document.getElementById('table-search').value || '').toLowerCase();
+            const filterMember = document.getElementById('table-filter-member').value;
+
+            tbody.innerHTML = '';
+
+            let filtered = shiftLogs.filter(log => {
+                const matchesMember = filterMember === 'ALL' || log.member === filterMember;
+                const matchesSearch = log.member.toLowerCase().includes(searchTerm) ||
+                                      log.date.includes(searchTerm) ||
+                                      (log.notes && log.notes.toLowerCase().includes(searchTerm));
+                return matchesMember && matchesSearch;
+            });
+
+            filtered.sort((a, b) => b.date.localeCompare(a.date));
+
+            let sumHours = 0;
+            let sumGross = 0;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="text-center p-8 text-slate-400 dark:text-slate-500 font-sans">
+                            No shift records found matching your criteria.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                filtered.forEach(log => {
+                    const hrs = parseFloat(log.hours) || 0;
+                    const rte = parseFloat(log.rate) || 17.00;
+                    const gross = hrs * rte;
+                    const cut = gross * 0.50;
+                    const net = gross * 0.50;
+
+                    sumHours += hrs;
+                    sumGross += gross;
+
+                    const mMeta = TEAM_MEMBERS[log.member] || COLOR_PALETTE[0];
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition";
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold text-slate-900 dark:text-white">${log.date}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-medium ${mMeta.lightBg} ${mMeta.text} border ${mMeta.border}">
+                                ${log.member}
+                            </span>
+                        </td>
+                        <td class="p-3 text-slate-600 dark:text-slate-300">${log.startTime} - ${log.endTime}</td>
+                        <td class="p-3 text-right font-bold text-slate-900 dark:text-white">${hrs.toFixed(2)}</td>
+                        <td class="p-3 text-right text-slate-600 dark:text-slate-400">$${rte.toFixed(2)}</td>
+                        <td class="p-3 text-right text-slate-800 dark:text-slate-200">$${gross.toFixed(2)}</td>
+                        <td class="p-3 text-right text-amber-700 dark:text-amber-400">$${cut.toFixed(2)}</td>
+                        <td class="p-3 text-right text-emerald-600 dark:text-emerald-400 font-bold">$${net.toFixed(2)}</td>
+                        <td class="p-3 text-slate-500 dark:text-slate-400 font-sans max-w-xs truncate">${log.notes || '-'}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="promptDeleteShift(${log.id})" class="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition" title="Delete Entry">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            const sumCut = sumGross * 0.50;
+            const sumNet = sumGross * 0.50;
+
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="3" class="p-3 text-slate-900 dark:text-white uppercase">Filtered Total:</td>
+                    <td class="p-3 text-right text-slate-900 dark:text-white">${sumHours.toFixed(2)} hrs</td>
+                    <td class="p-3"></td>
+                    <td class="p-3 text-right text-slate-900 dark:text-white">$${sumGross.toFixed(2)}</td>
+                    <td class="p-3 text-right text-amber-700 dark:text-amber-400">$${sumCut.toFixed(2)}</td>
+                    <td class="p-3 text-right text-emerald-600 dark:text-emerald-400">$${sumNet.toFixed(2)}</td>
+                    <td colspan="2"></td>
+                </tr>
+            `;
+
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function renderPayrollDetailedCards() {
+            const container = document.getElementById('payroll-detailed-cards');
+            container.innerHTML = '';
+
+            Object.keys(TEAM_MEMBERS).forEach(memberName => {
+                const mMeta = TEAM_MEMBERS[memberName];
+                const logs = shiftLogs.filter(l => l.member === memberName);
+
+                let hrs = 0;
+                let gross = 0;
+                logs.forEach(l => {
+                    const h = parseFloat(l.hours) || 0;
+                    const r = parseFloat(l.rate) || 17.00;
+                    hrs += h;
+                    gross += (h * r);
+                });
+
+                const deduction = gross * 0.50;
+                const net = gross * 0.50;
+
+                const cardHtml = `
+                    <div class="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-4 transition-colors">
+                        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-4 h-4 rounded-full ${mMeta.bg}"></div>
+                                <h3 class="font-bold text-slate-900 dark:text-white text-lg">${memberName}</h3>
+                            </div>
+                            <span class="text-xs font-mono font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg text-slate-700 dark:text-slate-200">
+                                ${logs.length} Shifts
+                            </span>
+                        </div>
+
+                        <div class="space-y-2 font-mono text-xs">
+                            <div class="flex justify-between text-slate-600 dark:text-slate-300">
+                                <span>Total Clocked Hours:</span>
+                                <span class="font-bold text-slate-900 dark:text-white">${hrs.toFixed(2)} hrs</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600 dark:text-slate-300">
+                                <span>Average Daily Shift:</span>
+                                <span class="font-bold text-slate-900 dark:text-white">${logs.length > 0 ? (hrs / logs.length).toFixed(2) : '0.00'} hrs</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600 dark:text-slate-300">
+                                <span>Hourly Billing Rate:</span>
+                                <span class="font-bold text-slate-900 dark:text-white">$17.00 / hr</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-200 dark:border-slate-700">
+                                <span>Gross Calculated Revenue:</span>
+                                <span class="font-bold text-slate-900 dark:text-white">$${gross.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between text-amber-700 dark:text-amber-400">
+                                <span>Company 50% Cut:</span>
+                                <span class="font-bold">-$${deduction.toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between text-emerald-700 dark:text-emerald-400 text-sm font-bold pt-2 border-t border-slate-200 dark:border-slate-700">
+                                <span>Net Payout (50%):</span>
+                                <span>$${net.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+
+        function renderWeeklyMatrix() {
+            const thead = document.getElementById('weekly-matrix-thead');
+            const tbody = document.getElementById('weekly-matrix-tbody');
+            if (!thead || !tbody) return;
+
+            const memberNames = Object.keys(TEAM_MEMBERS);
+
+            let thHtml = `<tr class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold uppercase"><th class="p-3">Week Window</th>`;
+            memberNames.forEach(name => {
+                thHtml += `<th class="p-3 text-center">${name} Hours</th>`;
+            });
+            thHtml += `<th class="p-3 text-right">Total Week Hours</th><th class="p-3 text-right">Team Net Pay (50%)</th></tr>`;
+            thead.innerHTML = thHtml;
+
+            const weeks = [
+                { label: 'Week 1 (July 1 - July 5)', startDay: 1, endDay: 5 },
+                { label: 'Week 2 (July 6 - July 12)', startDay: 6, endDay: 12 },
+                { label: 'Week 3 (July 13 - July 19)', startDay: 13, endDay: 19 },
+                { label: 'Week 4 (July 20 - July 26)', startDay: 20, endDay: 26 },
+                { label: 'Week 5 (July 27 - July 31)', startDay: 27, endDay: 31 }
+            ];
+
+            tbody.innerHTML = '';
+
+            weeks.forEach(w => {
+                let memberHoursMap = {};
+                memberNames.forEach(name => memberHoursMap[name] = 0);
+                let weekGross = 0;
+
+                shiftLogs.forEach(log => {
+                    const logDay = parseInt(log.date.split('-')[2]);
+                    if (logDay >= w.startDay && logDay <= w.endDay) {
+                        const h = parseFloat(log.hours) || 0;
+                        const r = parseFloat(log.rate) || 17.00;
+                        if (memberHoursMap[log.member] !== undefined) {
+                            memberHoursMap[log.member] += h;
+                        }
+                        weekGross += (h * r);
+                    }
+                });
+
+                let weekTotalHours = 0;
+                Object.values(memberHoursMap).forEach(h => weekTotalHours += h);
+                const weekNetPay = weekGross * 0.50;
+
+                let rowHtml = `<td class="p-3 font-semibold font-sans text-slate-800 dark:text-slate-200">${w.label}</td>`;
+                memberNames.forEach(name => {
+                    const mMeta = TEAM_MEMBERS[name];
+                    rowHtml += `<td class="p-3 text-center ${mMeta.text} font-bold">${memberHoursMap[name].toFixed(1)} h</td>`;
+                });
+
+                rowHtml += `<td class="p-3 text-right font-bold text-slate-900 dark:text-white">${weekTotalHours.toFixed(1)} h</td>`;
+                rowHtml += `<td class="p-3 text-right font-bold text-emerald-600 dark:text-emerald-400">$${weekNetPay.toFixed(2)}</td>`;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition";
+                tr.innerHTML = rowHtml;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function handleShiftSubmit(event) {
+            event.preventDefault();
+
+            const member = document.getElementById('form-member').value;
+            const date = document.getElementById('form-date').value;
+            const rate = parseFloat(document.getElementById('form-rate').value) || 17.00;
+            const startTime = document.getElementById('form-start-time').value;
+            const endTime = document.getElementById('form-end-time').value;
+            const notes = document.getElementById('form-notes').value;
+
+            const hours = calculateHoursBetween(startTime, endTime);
+
+            if (hours <= 0) {
+                showNotification("Please check start and end time. End time must be after start time.");
+                return;
+            }
+
+            const newLog = {
+                id: Date.now(),
+                member,
+                date,
+                startTime,
+                endTime,
+                hours,
+                rate,
+                notes
+            };
+
+            shiftLogs.push(newLog);
+
+            updateSummaryMetrics();
+            renderCalendar();
+            renderSpreadsheetTable();
+
+            document.getElementById('form-notes').value = '';
+            showNotification(`Shift logged for ${member} (${hours.toFixed(2)} hrs)`);
+
+            if (selectedInspectionDate === date) {
+                openDateModal(date);
+            }
+        }
+
+        function promptDeleteShift(id) {
+            pendingDeleteId = id;
+            document.getElementById('confirm-delete-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmDeleteModal() {
+            pendingDeleteId = null;
+            document.getElementById('confirm-delete-modal').classList.add('hidden');
+        }
+
+        function executePendingDelete() {
+            if (!pendingDeleteId) return;
+
+            shiftLogs = shiftLogs.filter(l => l.id !== pendingDeleteId);
+            closeConfirmDeleteModal();
+
+            updateSummaryMetrics();
+            renderCalendar();
+            renderSpreadsheetTable();
+
+            showNotification("Shift entry deleted successfully.");
+
+            if (selectedInspectionDate) {
+                openDateModal(selectedInspectionDate);
+            }
+        }
+
+        function openDateModal(dateString) {
+            selectedInspectionDate = dateString;
+            const modal = document.getElementById('date-modal');
+            const title = document.getElementById('date-modal-title');
+            const subtitle = document.getElementById('date-modal-subtitle');
+            const content = document.getElementById('date-modal-content');
+
+            title.querySelector('span').textContent = `Shifts on ${dateString}`;
+            
+            const logs = shiftLogs.filter(l => l.date === dateString);
+            
+            if (logs.length === 0) {
+                subtitle.textContent = "No shifts recorded on this date";
+                content.innerHTML = `
+                    <div class="text-center py-6 text-slate-400 dark:text-slate-500 font-sans">
+                        <i data-lucide="clock" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                        <p>No member logged hours on ${dateString}.</p>
+                    </div>
+                `;
+            } else {
+                let dayHours = 0;
+                logs.forEach(l => dayHours += parseFloat(l.hours) || 0);
+                subtitle.textContent = `${logs.length} shift(s) logged • Total: ${dayHours.toFixed(2)} hrs`;
+
+                content.innerHTML = '';
+                logs.forEach(log => {
+                    const mMeta = TEAM_MEMBERS[log.member] || COLOR_PALETTE[0];
+                    const hrs = parseFloat(log.hours) || 0;
+                    const rte = parseFloat(log.rate) || 17.00;
+                    const gross = hrs * rte;
+                    const net = gross * 0.50;
+
+                    const cardHtml = `
+                        <div class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 ${mMeta.lightBg} flex items-center justify-between gap-3 transition-colors">
+                            <div class="space-y-1">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-2.5 h-2.5 rounded-full ${mMeta.bg}"></span>
+                                    <span class="font-bold text-slate-900 dark:text-white text-sm">${log.member}</span>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400 font-mono">(${log.startTime} - ${log.endTime})</span>
+                                </div>
+                                <p class="text-xs text-slate-600 dark:text-slate-300">${log.notes || 'No route notes provided'}</p>
+                            </div>
+                            <div class="flex items-center space-x-3 shrink-0">
+                                <div class="text-right font-mono">
+                                    <div class="font-bold text-slate-900 dark:text-white text-sm">${hrs.toFixed(2)} hrs</div>
+                                    <div class="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">$${net.toFixed(2)} net</div>
+                                </div>
+                                <button onclick="promptDeleteShift(${log.id})" class="text-red-500 hover:text-red-700 dark:hover:text-red-400 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 transition" title="Delete Entry">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    content.insertAdjacentHTML('beforeend', cardHtml);
+                });
+            }
+
+            modal.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function closeDateModal() {
+            document.getElementById('date-modal').classList.add('hidden');
+        }
+
+        function openModalForSelectedDate() {
+            if (selectedInspectionDate) {
+                document.getElementById('form-date').value = selectedInspectionDate;
+                closeDateModal();
+                document.getElementById('form-member').focus();
+            }
+        }
+
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = 'tab-btn flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200';
+            });
+
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = 'tab-btn flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 bg-slate-700 text-white shadow-sm';
+            }
+
+            if (tabId === 'calendar') renderCalendar();
+            if (tabId === 'spreadsheet') renderSpreadsheetTable();
+            if (tabId === 'analytics') updateSummaryMetrics();
+        }
+
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            } else if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        }
+
+        function resetToJuly2026() {
+            currentYear = 2026;
+            currentMonth = 6;
+            renderCalendar();
+        }
+
+        function exportCSV() {
+            let csv = 'ID,Date,Member,Start Time,End Time,Hours Worked,Hourly Rate,Gross Pay,Company 50% Cut,Net Pay,Notes\n';
+            shiftLogs.forEach(log => {
+                const hrs = parseFloat(log.hours) || 0;
+                const rte = parseFloat(log.rate) || 17.00;
+                const gross = hrs * rte;
+                const cut = gross * 0.50;
+                const net = gross * 0.50;
+                csv += `"${log.id}","${log.date}","${log.member}","${log.startTime}","${log.endTime}",${hrs.toFixed(2)},${rte.toFixed(2)},${gross.toFixed(2)},${cut.toFixed(2)},${net.toFixed(2)},"${(log.notes || '').replace(/"/g, '""')}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `Team_Walking_Shifts_July2026.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        window.onload = function() {
+            document.getElementById('form-date').value = '2026-07-01';
+            
+            populateMemberDropdowns();
+            renderCalendarLegend();
+            calculateFormPreview();
+            updateSummaryMetrics();
+            renderCalendar();
+            renderSpreadsheetTable();
+
+            if (window.lucide) lucide.createIcons();
+        };
+    </script>
 </body>
 </html>
